@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>THE SYSTEM</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+:root{
+  --void:#02040a;
+  --panel:#060b16;
+  --panel2:#081020;
+  --edge:#1d3a66;
+  --edge-bright:#2f5fa8;
+  --mana:#2d8fff;
+  --mana-bright:#8ad7ff;
+  --violet:#7c4dff;
+  --gold:#e8b84b;
+  --danger:#ff3b3b;
+  --danger-bright:#ff7a7a;
+  --success:#34e7a8;
+  --text:#c7d6f2;
+  --text-dim:#4d6189;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  background:
+    radial-gradient(ellipse at 50% -10%, #0b1733 0%, var(--void) 55%),
+    var(--void);
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  min-height:100vh;
+  padding:20px 14px 90px;
+  overflow-x:hidden;
+}
+.title-font{font-family:'Orbitron',sans-serif;}
+
+/* scanline + grid ambience */
+.bg-fx{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.5;
+  background-image:
+    linear-gradient(rgba(45,143,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,143,255,0.035) 1px, transparent 1px);
+  background-size:38px 38px;
+  mask-image:radial-gradient(ellipse at 50% 20%, black 0%, transparent 70%);
+}
+.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(45,143,255,0.10), transparent 38%),
+    radial-gradient(circle at 90% 70%, rgba(124,77,255,0.08), transparent 40%);
+}
+
+.wrap{max-width:1000px;margin:0 auto;position:relative;z-index:1;}
+
+/* HEADER */
+.header{text-align:center;margin-bottom:26px;position:relative;}
+.header .eyebrow{
+  letter-spacing:8px;color:var(--mana-bright);font-size:11px;
+  text-shadow:0 0 14px rgba(138,215,255,0.7);
+}
+.header h1{
+  font-size:clamp(30px,6vw,50px);
+  letter-spacing:6px;
+  background:linear-gradient(180deg,#fff 10%,var(--mana-bright) 75%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 40px rgba(45,143,255,0.4);
+  margin-top:4px;
+}
+.header .sub{font-size:11px;letter-spacing:3px;color:var(--text-dim);margin-top:6px;}
+
+/* ANGULAR PANEL — clipped corners like a HUD frame */
+.panel{
+  --clip:14px;
+  background:linear-gradient(160deg, var(--panel) 0%, var(--panel2) 100%);
+  border:1px solid var(--edge);
+  clip-path:polygon(var(--clip) 0,100% 0,100% calc(100% - var(--clip)),calc(100% - var(--clip)) 100%,0 100%,0 var(--clip));
+  position:relative;
+  padding:24px;
+  margin-bottom:18px;
+  box-shadow:0 0 0 1px rgba(45,143,255,0.05), 0 25px 70px -25px rgba(0,0,0,0.9), inset 0 1px 0 rgba(138,215,255,0.06);
+}
+.panel.emergency{
+  border-color:var(--danger);
+  box-shadow:0 0 0 1px rgba(255,59,59,0.15), 0 0 40px -5px rgba(255,59,59,0.25), inset 0 1px 0 rgba(255,122,122,0.08);
+  animation:emPulse 2.4s ease-in-out infinite;
+}
+@keyframes emPulse{
+  0%,100%{box-shadow:0 0 0 1px rgba(255,59,59,0.15), 0 0 40px -5px rgba(255,59,59,0.25), inset 0 1px 0 rgba(255,122,122,0.08);}
+  50%{box-shadow:0 0 0 1px rgba(255,59,59,0.3), 0 0 60px -5px rgba(255,59,59,0.45), inset 0 1px 0 rgba(255,122,122,0.12);}
+}
+.panel::after{
+  content:'';position:absolute;top:0;left:var(--clip);right:0;height:1px;
+  background:linear-gradient(90deg, var(--mana), transparent 75%);
+}
+.panel.emergency::after{background:linear-gradient(90deg, var(--danger), transparent 75%);}
+.panel-corner-tl{
+  position:absolute;top:0;left:0;width:14px;height:14px;
+  border-top:2px solid var(--mana-bright);border-left:2px solid var(--mana-bright);
+  opacity:0.7;
+}
+.panel.emergency .panel-corner-tl{border-color:var(--danger-bright);}
+
+.panel-title{
+  font-family:'Orbitron',sans-serif;
+  font-size:13px;letter-spacing:4px;color:var(--mana-bright);
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;
+}
+.panel-title::before{content:'◈';color:var(--violet);font-size:11px;}
+.panel.emergency .panel-title{color:var(--danger-bright);}
+.panel.emergency .panel-title::before{content:'⚠';color:var(--danger);}
+.panel-title .corner{flex:1;height:1px;background:linear-gradient(90deg,var(--edge),transparent);}
+
+/* STATUS GRID */
+.status-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;}
+@media(max-width:600px){.status-grid{grid-template-columns:1fr;}}
+
+.name-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.player-name{font-family:'Orbitron';font-size:19px;color:#fff;letter-spacing:2px;}
+.rank-badge{
+  font-family:'Orbitron';font-size:12px;color:var(--void);
+  background:linear-gradient(135deg,var(--gold),#fcd34d);
+  padding:4px 12px;letter-spacing:1px;font-weight:700;
+  clip-path:polygon(6px 0,100% 0,100% 100%,0 100%,0 6px);
+}
+.lvl-row{font-size:14px;color:var(--text-dim);margin-bottom:16px;letter-spacing:1px;}
+.lvl-row b{color:var(--mana-bright);font-size:18px;font-family:'Orbitron';}
+
+.xp-bar-wrap{margin-bottom:20px;}
+.xp-label{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);letter-spacing:1px;margin-bottom:5px;}
+.xp-bar{height:12px;background:#04070f;border:1px solid var(--edge);position:relative;overflow:hidden;
+  clip-path:polygon(6px 0,100% 0,100% 100%,0 100%,0 6px);}
+.xp-fill{
+  height:100%;background:linear-gradient(90deg,var(--violet),var(--mana),var(--mana-bright));
+  box-shadow:0 0 14px var(--mana);
+  transition:width 0.6s ease;
+  position:relative;
+}
+.xp-fill::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(115deg, rgba(255,255,255,0.12) 0 6px, transparent 6px 14px);
+}
+
+.stats-list{display:flex;flex-direction:column;gap:9px;}
+.stat-line{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;padding:8px 12px;background:rgba(45,143,255,0.045);
+  border-left:2px solid var(--edge-bright);letter-spacing:1px;
+}
+.stat-line span:first-child{color:var(--text-dim);}
+.stat-line span:last-child{font-family:'Orbitron';color:var(--mana-bright);font-size:14px;}
+
+/* SCORE RING */
+.score-circle-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+.score-circle{position:relative;width:150px;height:150px;}
+.score-circle svg{transform:rotate(-90deg);}
+.score-circle .bg{fill:none;stroke:#04070f;stroke-width:7;}
+.score-circle .fg{fill:none;stroke:url(#gradStroke);stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 0.6s ease;
+  filter:drop-shadow(0 0 6px rgba(45,143,255,0.6));}
+.score-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.score-num .big{font-family:'Orbitron';font-size:30px;color:#fff;}
+.score-num .small{font-size:10px;color:var(--text-dim);letter-spacing:3px;margin-top:2px;}
+.streak{font-size:12px;color:var(--gold);letter-spacing:2px;font-family:'Orbitron';}
+
+/* QUEST CATEGORIES */
+.quest-categories{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.cat-pill{
+  font-size:11px;letter-spacing:1px;padding:6px 14px;border:1px solid var(--edge);
+  color:var(--text-dim);cursor:pointer;background:transparent;
+  font-family:'Orbitron';font-weight:500;transition:all .2s;
+  clip-path:polygon(6px 0,100% 0,100% 100%,0 100%,0 6px);
+}
+.cat-pill.active{
+  border-color:var(--mana);color:var(--mana-bright);
+  box-shadow:0 0 12px rgba(45,143,255,0.25) inset;
+  background:rgba(45,143,255,0.08);
+}
+
+.quest{
+  display:flex;align-items:flex-start;gap:14px;
+  padding:14px;border:1px solid var(--edge);margin-bottom:10px;
+  background:rgba(255,255,255,0.012);
+  position:relative;overflow:hidden;
+  clip-path:polygon(10px 0,100% 0,100% 100%,0 100%,0 10px);
+}
+.quest.done{opacity:0.45;}
+.quest.done .qtitle{text-decoration:line-through;}
+.quest.urgent{border-color:var(--danger);background:rgba(255,59,59,0.05);}
+
+.quest-tag{
+  font-size:9px;letter-spacing:1px;padding:3px 7px;
+  font-family:'Orbitron';white-space:nowrap;border:1px solid;
+}
+.tag-CDS{background:rgba(232,184,75,0.12);color:var(--gold);border-color:rgba(232,184,75,0.35);}
+.tag-GYM{background:rgba(255,59,59,0.12);color:#ff9d9d;border-color:rgba(255,59,59,0.35);}
+.tag-DEV{background:rgba(45,143,255,0.12);color:var(--mana-bright);border-color:rgba(45,143,255,0.35);}
+.tag-DSA{background:rgba(124,77,255,0.12);color:#c4b5fd;border-color:rgba(124,77,255,0.35);}
+.tag-OTHER{background:rgba(52,231,168,0.12);color:var(--success);border-color:rgba(52,231,168,0.35);}
+.tag-EMERGENCY{background:rgba(255,59,59,0.2);color:#fff;border-color:var(--danger);}
+
+.qcheck{
+  width:22px;height:22px;border:1px solid var(--mana);flex-shrink:0;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(45,143,255,0.05);margin-top:1px;
+  clip-path:polygon(4px 0,100% 0,100% 100%,0 100%,0 4px);
+}
+.qcheck.checked{background:var(--mana);box-shadow:0 0 12px var(--mana);}
+.qcheck.checked::after{content:'✓';color:#fff;font-size:14px;font-weight:700;}
+.quest.urgent .qcheck{border-color:var(--danger);}
+.quest.urgent .qcheck.checked{background:var(--danger);box-shadow:0 0 12px var(--danger);}
+
+.qbody{flex:1;min-width:0;}
+.qtop{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.qtitle{font-size:15px;font-weight:600;color:#fff;}
+.qmeta{font-size:11px;color:var(--text-dim);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;letter-spacing:0.5px;}
+.qreward{color:var(--success);}
+.qpenalty{color:var(--danger-bright);}
+.qdeadline{color:var(--danger-bright);font-weight:700;}
+.qdel{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:17px;padding:2px 6px;flex-shrink:0;}
+.qdel:hover{color:var(--danger);}
+
+/* FORM */
+.add-form{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+.add-form input, .add-form select{
+  background:#04070f;border:1px solid var(--edge);color:var(--text);
+  padding:10px 11px;font-family:'Rajdhani';font-size:13px;
+  clip-path:polygon(5px 0,100% 0,100% 100%,0 100%,0 5px);
+}
+.add-form input[type=text]{flex:2;min-width:170px;}
+.add-form input[type=number]{width:75px;}
+.add-form input:focus, .add-form select:focus{outline:none;border-color:var(--mana);}
+.btn{
+  font-family:'Orbitron';font-size:11px;letter-spacing:1.5px;
+  background:linear-gradient(135deg,var(--mana),var(--violet));
+  border:none;color:#fff;padding:10px 20px;cursor:pointer;
+  box-shadow:0 0 18px rgba(45,143,255,0.35);
+  clip-path:polygon(7px 0,100% 0,100% 100%,0 100%,0 7px);
+}
+.btn:hover{filter:brightness(1.18);}
+.btn.ghost{background:transparent;border:1px solid var(--edge);box-shadow:none;color:var(--text-dim);}
+.btn.danger{background:linear-gradient(135deg,#8a1414,var(--danger));box-shadow:0 0 18px rgba(255,59,59,0.35);}
+
+.close-day-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:8px;}
+
+/* EMERGENCY */
+.em-intro{font-size:13px;color:var(--text-dim);margin-bottom:16px;line-height:1.6;letter-spacing:0.3px;}
+.em-intro b{color:var(--danger-bright);}
+.weekly-bars{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+.wb-row{display:flex;align-items:center;gap:12px;}
+.wb-label{width:110px;font-size:11px;letter-spacing:1px;color:var(--text-dim);font-family:'Orbitron';flex-shrink:0;}
+.wb-track{flex:1;height:9px;background:#04070f;border:1px solid var(--edge);position:relative;
+  clip-path:polygon(4px 0,100% 0,100% 100%,0 100%,0 4px);}
+.wb-fill{height:100%;background:linear-gradient(90deg,var(--mana),var(--mana-bright));transition:width .5s;}
+.wb-fill.low{background:linear-gradient(90deg,#7f1d1d,var(--danger));}
+.wb-pct{width:40px;text-align:right;font-size:12px;color:var(--text-dim);font-family:'Orbitron';}
+
+.no-emergency{text-align:center;padding:20px;color:var(--success);font-size:13px;letter-spacing:1px;font-family:'Orbitron';}
+
+/* TRAITS */
+.trait-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.trait-label{width:120px;flex-shrink:0;font-size:11px;letter-spacing:1px;color:var(--text-dim);font-family:'Orbitron';}
+.trait-desc{font-size:10px;color:var(--text-dim);margin-top:2px;letter-spacing:0.3px;}
+.trait-track{flex:1;height:9px;background:#04070f;border:1px solid var(--edge);position:relative;
+  clip-path:polygon(4px 0,100% 0,100% 100%,0 100%,0 4px);}
+.trait-fill{height:100%;background:linear-gradient(90deg,var(--violet),#c4b5fd);transition:width .5s;}
+.trait-val{width:36px;text-align:right;font-size:12px;color:var(--mana-bright);font-family:'Orbitron';}
+.diff-tag{font-size:9px;color:var(--gold);letter-spacing:0.5px;margin-left:6px;}
+.decay-note{font-size:11px;color:var(--text-dim);margin-top:10px;letter-spacing:0.3px;line-height:1.5;}
+
+/* LOG */
+.log-entry{
+  font-size:12px;color:var(--text-dim);padding:7px 0;border-bottom:1px solid rgba(29,58,102,0.4);
+  display:flex;justify-content:space-between;gap:10px;letter-spacing:0.3px;
+}
+.log-entry .lp{color:var(--success);}
+.log-entry .ln{color:var(--danger-bright);}
+.log-entry .lw{color:var(--gold);}
+
+/* TOAST / SYSTEM NOTIFICATION */
+.toast{
+  position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-24px) scale(0.96);
+  background:linear-gradient(160deg,var(--panel),var(--panel2));
+  border:1px solid var(--mana);padding:16px 30px;
+  font-family:'Orbitron';font-size:13px;letter-spacing:2px;color:var(--mana-bright);
+  box-shadow:0 0 40px rgba(45,143,255,0.45);
+  opacity:0;pointer-events:none;transition:all .35s ease;z-index:200;text-align:center;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);}
+.toast.penalty{border-color:var(--danger);color:var(--danger-bright);box-shadow:0 0 40px rgba(255,59,59,0.45);}
+.toast::before{content:'[ SYSTEM ]';display:block;font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:4px;}
+
+.empty{text-align:center;color:var(--text-dim);font-size:13px;padding:24px;letter-spacing:1px;}
+.foot-note{text-align:center;color:var(--text-dim);font-size:11px;letter-spacing:2px;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="bg-fx"></div>
+<div class="bg-glow"></div>
+<div class="wrap">
+  <div id="authScreen" class="panel" style="display:block;">
+    <div class="panel-corner-tl"></div>
+    <div class="panel-title">AUTHENTICATION <span class="corner"></span></div>
+    <div class="add-form" style="display:flex;flex-direction:column;align-items:stretch;">
+      <input type="email" id="authEmail" placeholder="Email" />
+      <input type="password" id="authPassword" placeholder="Password" />
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" onclick="handleAuth('login')">LOGIN</button>
+        <button class="btn ghost" onclick="handleAuth('register')">REGISTER</button>
+      </div>
+    </div>
+    <div id="authMessage" class="empty" style="display:block; margin-top:12px;"></div>
+  </div>
+
+  <div id="appShell" style="display:none;">
+
+  <div class="header">
+    <div class="eyebrow title-font">[ NOTIFICATION ]</div>
+    <h1 class="title-font">THE SYSTEM</h1>
+    <div class="sub title-font">YOU HAVE BEEN GRANTED THE POWER TO LEVEL UP</div>
+  </div>
+
+  <!-- STATUS PANEL -->
+  <div class="panel">
+    <div class="panel-corner-tl"></div>
+    <div class="panel-title">STATUS WINDOW <span class="corner"></span></div>
+    <div class="status-grid">
+      <div class="stat-block">
+        <div class="name-row">
+          <div class="player-name" id="playerName">HUNTER</div>
+          <div class="rank-badge" id="rankBadge">E-RANK</div>
+        </div>
+        <div class="lvl-row">LEVEL <b id="lvlNum">1</b></div>
+        <div class="xp-bar-wrap">
+          <div class="xp-label"><span>XP</span><span id="xpLabel">0 / 100</span></div>
+          <div class="xp-bar"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+        </div>
+        <div class="stats-list">
+          <div class="stat-line"><span>STR — GYM</span><span id="statSTR">0</span></div>
+          <div class="stat-line"><span>INT — CDS/AFCAT</span><span id="statINT">0</span></div>
+          <div class="stat-line"><span>PER — DSA</span><span id="statPER">0</span></div>
+          <div class="stat-line"><span>AGI — WEB DEV</span><span id="statAGI">0</span></div>
+        </div>
+      </div>
+      <div class="score-circle-wrap">
+        <div class="score-circle">
+          <svg width="150" height="150" viewBox="0 0 150 150">
+            <defs>
+              <linearGradient id="gradStroke" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#7c4dff"/>
+                <stop offset="100%" stop-color="#8ad7ff"/>
+              </linearGradient>
+            </defs>
+            <circle class="bg" cx="75" cy="75" r="64"/>
+            <circle class="fg" id="scoreRing" cx="75" cy="75" r="64" stroke-dasharray="402" stroke-dashoffset="402"/>
+          </svg>
+          <div class="score-num">
+            <div class="big" id="scorePct">0%</div>
+            <div class="small">TODAY</div>
+          </div>
+        </div>
+        <div class="streak" id="streakText">🔥 0 DAY STREAK</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HIDDEN TRAITS -->
+  <div class="panel">
+    <div class="panel-corner-tl"></div>
+    <div class="panel-title">HIDDEN TRAITS DISCOVERED <span class="corner"></span></div>
+    <div class="trait-row">
+      <div class="trait-label">DISCIPLINE</div>
+      <div class="trait-track"><div class="trait-fill" id="traitDiscipline" style="width:0%"></div></div>
+      <div class="trait-val" id="traitDisciplineVal">—</div>
+    </div>
+    <div class="trait-row">
+      <div class="trait-label">RESILIENCE</div>
+      <div class="trait-track"><div class="trait-fill" id="traitResilience" style="width:0%"></div></div>
+      <div class="trait-val" id="traitResilienceVal">—</div>
+    </div>
+    <div class="trait-row">
+      <div class="trait-label">FOCUS</div>
+      <div class="trait-track"><div class="trait-fill" id="traitFocus" style="width:0%"></div></div>
+      <div class="trait-val" id="traitFocusVal">—</div>
+    </div>
+    <div class="decay-note">The System infers these from your behavior — not self-reported. <b style="color:var(--mana-bright)">DISCIPLINE</b> = % of perfect days closed. <b style="color:var(--mana-bright)">RESILIENCE</b> = how often you bounce back to a perfect day after a penalty. <b style="color:var(--mana-bright)">FOCUS</b> = average weekly completion rate across all stats. Stats also <b style="color:var(--danger-bright)">decay</b> if a category goes untouched for 3+ days — neglect a skill and the System will quietly weaken it.</div>
+  </div>
+
+  <!-- EMERGENCY QUESTS -->
+  <div class="panel emergency" id="emPanel">
+    <div class="panel-corner-tl"></div>
+    <div class="panel-title">EMERGENCY QUEST <span class="corner"></span></div>
+    <div class="em-intro" id="emIntro"></div>
+    <div class="weekly-bars" id="weeklyBars"></div>
+    <div id="emQuestList"></div>
+    <div class="close-day-row">
+      <button class="btn ghost" onclick="manualEmergency()">⚠ FORCE-ISSUE EMERGENCY QUEST</button>
+      <span style="font-size:11px;color:var(--text-dim);letter-spacing:1px;">Auto-triggers when a stat falls below 50% completion this week</span>
+    </div>
+  </div>
+
+  <!-- DAILY QUESTS -->
+  <div class="panel">
+    <div class="panel-corner-tl"></div>
+    <div class="panel-title">DAILY QUESTS <span class="corner"></span></div>
+    <div class="quest-categories" id="catFilters">
+      <button class="cat-pill active" data-cat="ALL">ALL</button>
+      <button class="cat-pill" data-cat="CDS">CDS/AFCAT</button>
+      <button class="cat-pill" data-cat="GYM">GYM</button>
+      <button class="cat-pill" data-cat="DEV">WEB DEV</button>
+      <button class="cat-pill" data-cat="DSA">DSA</button>
+      <button class="cat-pill" data-cat="OTHER">OTHER</button>
+    </div>
+    <div id="questList"></div>
+    <div class="empty" id="emptyMsg" style="display:none;">No quests in this category. Register one below, Hunter.</div>
+
+    <div class="add-form">
+      <input type="text" id="newQTitle" placeholder="New quest (e.g. Solve 20 DSA problems)">
+      <select id="newQCat">
+        <option value="CDS">CDS/AFCAT</option>
+        <option value="GYM">GYM</option>
+        <option value="DEV">WEB DEV</option>
+        <option value="DSA">DSA</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+      <input type="number" id="newQXP" placeholder="XP reward" value="20">
+      <input type="number" id="newQPenalty" placeholder="Penalty XP" value="10">
+      <button class="btn" onclick="addQuest()">+ REGISTER QUEST</button>
+    </div>
+
+    <div class="close-day-row">
+      <button class="btn ghost" onclick="resetDay()">↻ NEW DAY (clear completion)</button>
+      <button class="btn danger" onclick="closeDay()">⚔ CLOSE OUT DAY</button>
+    </div>
+  </div>
+
+  <!-- LOG -->
+  <div class="panel">
+    <div class="panel-corner-tl"></div>
+    <div class="panel-title">SYSTEM LOG <span class="corner"></span></div>
+    <div id="logList"></div>
+    <div class="empty" id="logEmpty" style="display:none;">No entries yet.</div>
+  </div>
+
+  <div class="foot-note">DO NOT IGNORE THE SYSTEM'S WARNINGS.</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let state = null;
+let activeCat = 'ALL';
+let authToken = localStorage.getItem('system-auth-token') || '';
+let userId = localStorage.getItem('system-user-id') || '';
+const API_BASE = '/api';
+const CATS = ['CDS','GYM','DEV','DSA'];
+const CAT_LABEL = {CDS:'CDS / AFCAT', GYM:'GYM', DEV:'WEB DEV', DSA:'DSA'};
+const CAT_STAT = {CDS:'INT', GYM:'STR', DSA:'PER', DEV:'AGI'};
+
+const DEFAULT_QUESTS = [
+  {id:'q1', cat:'CDS', title:'Study CDS/AFCAT — 2 hrs', xp:30, penalty:15, done:false},
+  {id:'q2', cat:'GYM', title:'Complete gym session', xp:20, penalty:10, done:false},
+  {id:'q3', cat:'DSA', title:'Solve 5 DSA problems', xp:25, penalty:12, done:false},
+  {id:'q4', cat:'DEV', title:'1 hr web dev practice/project', xp:20, penalty:10, done:false},
+];
+
+function defaultState(){
+  return {
+    level:1, xp:0,
+    stats:{STR:0,INT:0,PER:0,AGI:0},
+    quests: JSON.parse(JSON.stringify(DEFAULT_QUESTS)),
+    emergencyQuests: [],
+    streak:0,
+    lastCloseDate:null,
+    history: [], // {date, cat, done, total} per close-day, per category
+    dayLog: [],  // {date, perfect:boolean} per close-day, for trait inference
+    difficulty: {}, // {questId: {skipRate, n}} — adaptive XP engine
+    decayCounter: {CDS:0, GYM:0, DEV:0, DSA:0}, // days untouched per stat
+    log:[]
+  };
+}
+
+const STORAGE_KEY = 'system-state-v3';
+
+async function requestJson(path, { method='GET', body, auth=true } = {}) {
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (auth && authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const res = await fetch(`${API_BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function ensureAuthenticated(){
+  if (!authToken) {
+    document.getElementById('authScreen').style.display = 'block';
+    document.getElementById('appShell').style.display = 'none';
+    return false;
+  }
+  return true;
+}
+
+async function handleAuth(mode){
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const message = document.getElementById('authMessage');
+  try {
+    const payload = await requestJson(`/auth/${mode}`, { method:'POST', body:{ email, password }, auth:false });
+    authToken = payload.token;
+    userId = payload.userId;
+    localStorage.setItem('system-auth-token', authToken);
+    localStorage.setItem('system-user-id', userId);
+    message.textContent = mode === 'login' ? 'Signed in.' : 'Registered and signed in.';
+    message.style.color = 'var(--success)';
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appShell').style.display = 'block';
+    await loadState();
+  } catch (err) {
+    message.textContent = err.message;
+    message.style.color = 'var(--danger-bright)';
+  }
+}
+
+async function loadState(){
+  if (!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson('/state');
+    state = payload;
+    if (!state.emergencyQuests) state.emergencyQuests = [];
+    if (!state.history) state.history = [];
+    if (!state.dayLog) state.dayLog = [];
+    if (!state.difficulty) state.difficulty = {};
+    if (!state.decayCounter) state.decayCounter = {CDS:0, GYM:0, DEV:0, DSA:0};
+    if (!state.log) state.log = [];
+    render();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function saveState(){
+  if (!state || !authToken) return;
+  try {
+    const payload = await requestJson('/state/sync', { method:'POST', body: state });
+    state = payload;
+    if (!state.emergencyQuests) state.emergencyQuests = [];
+    if (!state.history) state.history = [];
+    if (!state.dayLog) state.dayLog = [];
+    if (!state.difficulty) state.difficulty = {};
+    if (!state.decayCounter) state.decayCounter = {CDS:0, GYM:0, DEV:0, DSA:0};
+    if (!state.log) state.log = [];
+    render();
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+/* ---------- ADAPTIVE DIFFICULTY / XP ENGINE ---------- */
+function difficultyCoef(qid){
+  const d = state.difficulty[qid];
+  if(!d || d.n===0) return 1;
+  return Math.min(1.6, 1 + d.skipRate*0.6);
+}
+function consistencyMultiplier(){
+  return 0.85 + 0.15*Math.min(state.streak,10)/10;
+}
+function effectiveXP(q){
+  return Math.round(q.xp * difficultyCoef(q.id) * consistencyMultiplier());
+}
+function updateDifficulty(q){
+  const d = state.difficulty[q.id] || {skipRate:0, n:0};
+  d.n += 1;
+  const lr = Math.max(0.1, 1/d.n); // wide error bars early, stabilizes as n grows
+  d.skipRate = d.skipRate + lr*((q.done?0:1) - d.skipRate);
+  state.difficulty[q.id] = d;
+}
+
+function xpNeeded(lvl){ return 100 + (lvl-1)*40; }
+function rankForLevel(lvl){
+  if(lvl<5) return 'E-RANK';
+  if(lvl<10) return 'D-RANK';
+  if(lvl<18) return 'C-RANK';
+  if(lvl<28) return 'B-RANK';
+  if(lvl<40) return 'A-RANK';
+  return 'S-RANK';
+}
+
+function showToast(msg, isPenalty){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isPenalty?' penalty':'');
+  setTimeout(()=>{ t.className = 'toast' + (isPenalty?' penalty':''); }, 2800);
+}
+
+function addXP(amount, cat){
+  state.xp += amount;
+  const statKey = CAT_STAT[cat];
+  if(statKey) state.stats[statKey] += Math.round(amount/5);
+  while(state.xp >= xpNeeded(state.level)){
+    state.xp -= xpNeeded(state.level);
+    state.level += 1;
+    showToast('LEVEL UP — YOU ARE NOW LEVEL ' + state.level, false);
+  }
+}
+
+function addLog(text, type){
+  state.log.unshift({text, type, date: new Date().toLocaleString()});
+  state.log = state.log.slice(0,50);
+}
+
+/* ---------- DAILY QUESTS ---------- */
+async function toggleQuest(id){
+  if(!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson(`/quests/${id}/toggle`, { method:'POST' });
+    state = payload.state;
+    if (!state.emergencyQuests) state.emergencyQuests = [];
+    if (!state.history) state.history = [];
+    if (!state.dayLog) state.dayLog = [];
+    if (!state.difficulty) state.difficulty = {};
+    if (!state.decayCounter) state.decayCounter = {CDS:0, GYM:0, DEV:0, DSA:0};
+    if (!state.log) state.log = [];
+    render();
+    showToast(payload.result.message || 'Quest updated', false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function deleteQuest(id){
+  if(!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson(`/quests/${id}`, { method:'DELETE' });
+    state = payload.state;
+    render();
+    showToast(payload.result.deleted ? 'Quest removed' : 'Quest removed', false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function addQuest(){
+  if(!ensureAuthenticated()) return;
+  const title = document.getElementById('newQTitle').value.trim();
+  const cat = document.getElementById('newQCat').value;
+  const xp = parseInt(document.getElementById('newQXP').value, 10) || 10;
+  const penalty = parseInt(document.getElementById('newQPenalty').value, 10) || 5;
+  if(!title){ showToast('ENTER A QUEST NAME', true); return; }
+  try {
+    const payload = await requestJson('/quests', { method:'POST', body:{ title, cat, xp, penalty } });
+    state = payload.state;
+    document.getElementById('newQTitle').value='';
+    render();
+    showToast('QUEST REGISTERED', false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function resetDay(){
+  if(!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson('/day/reset', { method:'POST' });
+    state = payload.state;
+    render();
+    showToast('NEW DAY — QUESTS RESET', false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function closeDay(){
+  if(!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson('/day/close', { method:'POST' });
+    state = payload.state;
+    render();
+    const result = payload.result || {};
+    const message = result.message || 'DAY CLOSED';
+    showToast(message, result.perfect === false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+/* ---------- EMERGENCY QUESTS ---------- */
+function weeklyCompletionByCat(){
+  const cutoff = Date.now() - 7*24*60*60*1000;
+  const result = {};
+  CATS.forEach(cat=>{
+    const entries = state.history.filter(h=>h.cat===cat && new Date(h.date).getTime()>=cutoff);
+    let done=0, total=0;
+    entries.forEach(e=>{ done+=e.done; total+=e.total; });
+    result[cat] = total>0 ? done/total : null; // null = no data yet
+  });
+  return result;
+}
+
+function checkEmergencyTriggers(){
+  const rates = weeklyCompletionByCat();
+  CATS.forEach(cat=>{
+    const rate = rates[cat];
+    if(rate===null) return;
+    if(rate < 0.5){
+      const alreadyActive = state.emergencyQuests.some(e=>e.cat===cat && !e.resolved);
+      if(!alreadyActive){
+        issueEmergencyQuest(cat, rate);
+      }
+    }
+  });
+}
+
+function issueEmergencyQuest(cat, rate){
+  const deadline = Date.now() + 3*24*60*60*1000; // 3 days to redeem
+  const eq = {
+    id:'em'+Date.now()+cat,
+    cat,
+    title:`Redeem your ${CAT_LABEL[cat]} performance — complete an intensive session`,
+    xp: 60,
+    penalty: 50,
+    deadline,
+    done:false,
+    resolved:false
+  };
+  state.emergencyQuests.push(eq);
+  addLog(`⚠ EMERGENCY QUEST ISSUED — ${CAT_LABEL[cat]} completion fell to ${Math.round(rate*100)}% this week`, 'w');
+  showToast(`⚠ EMERGENCY QUEST: ${CAT_LABEL[cat]}`, true);
+}
+
+async function manualEmergency(){
+  if(!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson('/day/emergency/manual', { method:'POST' });
+    state = payload.state;
+    render();
+    showToast('EMERGENCY QUEST ISSUED', true);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+async function toggleEmergency(id){
+  if(!ensureAuthenticated()) return;
+  try {
+    const payload = await requestJson(`/day/emergency/${id}/toggle`, { method:'POST' });
+    state = payload.state;
+    render();
+    showToast(payload.result && payload.result.done ? 'EMERGENCY QUEST CLEARED' : 'EMERGENCY QUEST UPDATED', false);
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function resolveExpiredEmergencies(){
+  const now = Date.now();
+  state.emergencyQuests.forEach(eq=>{
+    if(!eq.resolved && now > eq.deadline){
+      eq.resolved = true;
+      state.xp -= eq.penalty;
+      while(state.xp < 0 && state.level>1){ state.level -= 1; state.xp += xpNeeded(state.level); }
+      if(state.xp<0) state.xp=0;
+      addLog(`-${eq.penalty} XP — EMERGENCY QUEST FAILED: ${CAT_LABEL[eq.cat]}`, 'n');
+      showToast(`EMERGENCY QUEST FAILED -${eq.penalty} XP`, true);
+    }
+  });
+  state.emergencyQuests = state.emergencyQuests.filter(e=>!(e.resolved && e.done===false && now-e.deadline>7*24*60*60*1000) );
+}
+
+/* ---------- HIDDEN TRAIT INFERENCE ---------- */
+function computeTraits(){
+  const recent = state.dayLog.slice(-14);
+  const discipline = recent.length ? Math.round(recent.filter(d=>d.perfect).length/recent.length*100) : null;
+
+  let recoverOps=0, recovered=0;
+  for(let i=1;i<recent.length;i++){
+    if(!recent[i-1].perfect){
+      recoverOps++;
+      if(recent[i].perfect) recovered++;
+    }
+  }
+  const resilience = recoverOps>0 ? Math.round(recovered/recoverOps*100) : null;
+
+  const rates = weeklyCompletionByCat();
+  const vals = CATS.map(c=>rates[c]).filter(v=>v!==null);
+  const focus = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*100) : null;
+
+  return {discipline, resilience, focus};
+}
+function setActiveCat(cat){
+  activeCat = cat;
+  document.querySelectorAll('#catFilters .cat-pill').forEach(p=>{
+    p.classList.toggle('active', p.dataset.cat===cat);
+  });
+  render();
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function formatDeadline(ts){
+  const diff = ts - Date.now();
+  if(diff<=0) return 'EXPIRED';
+  const hrs = Math.floor(diff/3600000);
+  const days = Math.floor(hrs/24);
+  if(days>0) return `${days}d ${hrs%24}h left`;
+  return `${hrs}h left`;
+}
+
+function render(){
+  document.getElementById('lvlNum').textContent = state.level;
+  document.getElementById('rankBadge').textContent = rankForLevel(state.level);
+  const need = xpNeeded(state.level);
+  document.getElementById('xpLabel').textContent = `${state.xp} / ${need}`;
+  document.getElementById('xpFill').style.width = Math.min(100,(state.xp/need)*100) + '%';
+
+  document.getElementById('statSTR').textContent = state.stats.STR;
+  document.getElementById('statINT').textContent = state.stats.INT;
+  document.getElementById('statPER').textContent = state.stats.PER;
+  document.getElementById('statAGI').textContent = state.stats.AGI;
+
+  const total = state.quests.length;
+  const done = state.quests.filter(q=>q.done).length;
+  const pct = total ? Math.round((done/total)*100) : 0;
+  document.getElementById('scorePct').textContent = pct + '%';
+  const circumference = 402;
+  document.getElementById('scoreRing').style.strokeDashoffset = circumference - (pct/100)*circumference;
+  document.getElementById('streakText').textContent = `🔥 ${state.streak} DAY STREAK`;
+
+  // daily quest list
+  const list = document.getElementById('questList');
+  const filtered = activeCat==='ALL' ? state.quests : state.quests.filter(q=>q.cat===activeCat);
+  list.innerHTML = '';
+  document.getElementById('emptyMsg').style.display = filtered.length ? 'none' : 'block';
+  filtered.forEach(q=>{
+    const div = document.createElement('div');
+    div.className = 'quest' + (q.done ? ' done':'');
+    const coef = difficultyCoef(q.id);
+    const xpShown = effectiveXP(q);
+    const diffTag = coef>1.05 ? `<span class="diff-tag">×${coef.toFixed(2)} difficulty</span>` : '';
+    div.innerHTML = `
+      <div class="qcheck ${q.done?'checked':''}" onclick="toggleQuest('${q.id}')"></div>
+      <div class="qbody">
+        <div class="qtop">
+          <div class="qtitle">${escapeHtml(q.title)}</div>
+          <span class="quest-tag tag-${q.cat}">${q.cat}</span>
+        </div>
+        <div class="qmeta">
+          <span class="qreward">Reward +${xpShown} XP${diffTag}</span>
+          <span class="qpenalty">Penalty -${q.penalty} XP</span>
+        </div>
+      </div>
+      <button class="qdel" onclick="deleteQuest('${q.id}')">✕</button>
+    `;
+    list.appendChild(div);
+  });
+
+  // emergency panel
+  const rates = weeklyCompletionByCat();
+  const bars = document.getElementById('weeklyBars');
+  bars.innerHTML = '';
+  CATS.forEach(cat=>{
+    const r = rates[cat];
+    const pctVal = r===null ? null : Math.round(r*100);
+    const row = document.createElement('div');
+    row.className = 'wb-row';
+    row.innerHTML = `
+      <div class="wb-label">${CAT_LABEL[cat]}</div>
+      <div class="wb-track"><div class="wb-fill ${pctVal!==null && pctVal<50 ? 'low':''}" style="width:${pctVal===null?0:pctVal}%"></div></div>
+      <div class="wb-pct">${pctVal===null ? '—' : pctVal+'%'}</div>
+    `;
+    bars.appendChild(row);
+  });
+
+  const activeEm = state.emergencyQuests.filter(e=>!e.resolved);
+  const emList = document.getElementById('emQuestList');
+  emList.innerHTML = '';
+  const emIntro = document.getElementById('emIntro');
+  if(activeEm.length===0){
+    emIntro.innerHTML = `No active emergencies. The System watches your <b>weekly completion rate</b> per stat — fall below <b>50%</b> over 7 days and an Emergency Quest will be issued with a harsh penalty and a deadline.`;
+  } else {
+    emIntro.innerHTML = `<b>${activeEm.length} active emergency quest(s).</b> Clear them before the deadline or take the penalty.`;
+  }
+  activeEm.forEach(eq=>{
+    const div = document.createElement('div');
+    div.className = 'quest urgent' + (eq.done?' done':'');
+    div.innerHTML = `
+      <div class="qcheck ${eq.done?'checked':''}" onclick="toggleEmergency('${eq.id}')"></div>
+      <div class="qbody">
+        <div class="qtop">
+          <div class="qtitle">${escapeHtml(eq.title)}</div>
+          <span class="quest-tag tag-EMERGENCY">EMERGENCY</span>
+        </div>
+        <div class="qmeta">
+          <span class="qreward">Reward +${eq.xp} XP</span>
+          <span class="qpenalty">Penalty -${eq.penalty} XP</span>
+          <span class="qdeadline">${formatDeadline(eq.deadline)}</span>
+        </div>
+      </div>
+    `;
+    emList.appendChild(div);
+  });
+
+  // log
+  const logList = document.getElementById('logList');
+  logList.innerHTML = '';
+  document.getElementById('logEmpty').style.display = state.log.length ? 'none':'block';
+  state.log.slice(0,18).forEach(e=>{
+    const cls = e.type==='p' ? 'lp' : (e.type==='w' ? 'lw' : 'ln');
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="${cls}">${escapeHtml(e.text)}</span><span>${e.date}</span>`;
+    logList.appendChild(div);
+  });
+
+  // hidden traits
+  const traits = computeTraits();
+  ['discipline','resilience','focus'].forEach(key=>{
+    const v = traits[key];
+    const fill = document.getElementById('trait'+key.charAt(0).toUpperCase()+key.slice(1));
+    const val = document.getElementById('trait'+key.charAt(0).toUpperCase()+key.slice(1)+'Val');
+    fill.style.width = (v===null?0:v) + '%';
+    val.textContent = v===null ? '—' : v+'%';
+  });
+}
+
+document.getElementById('catFilters').addEventListener('click', (e)=>{
+  if(e.target.classList.contains('cat-pill')) setActiveCat(e.target.dataset.cat);
+});
+
+if (authToken) {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  loadState();
+} else {
+  document.getElementById('authScreen').style.display = 'block';
+  document.getElementById('appShell').style.display = 'none';
+}
+setInterval(()=>{ if (state && authToken) { loadState().catch(()=>{}); } }, 60000);
+</script>
+</body>
+</html>
