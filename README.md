@@ -21,6 +21,35 @@ installs cleanly anywhere). Swap this for Postgres/Mongo later without
 touching `logic/engine.js`, since all DB access is isolated in `db.js` and
 the route files.
 
+## Deployment
+
+### GitHub
+
+1. Create a GitHub repository.
+2. Add it as remote and push from this folder:
+
+```bash
+git remote add origin <your-github-repo-url>
+git branch -M main
+git push -u origin main
+```
+
+3. The repository is ready to use with GitHub Actions via
+`.github/workflows/ci.yml`.
+
+### Vercel
+
+1. Sign in to Vercel and import the repository.
+2. Use the default settings and confirm the root project folder.
+3. The `vercel.json` config will publish the frontend static app.
+
+> Important: the current deployed site on Vercel will be frontend-only.
+> API requests to `/api/*` need a separate backend host or a serverless
+> deployment with a persistent database.
+
+If you want a fully working website on Vercel, deploy the API separately and
+update the frontend to use that backend URL rather than `/api`.
+
 ## Auth
 
 ```

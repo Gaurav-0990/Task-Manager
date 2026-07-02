@@ -303,9 +303,12 @@ body{
     <div class="add-form" style="display:flex;flex-direction:column;align-items:stretch;">
       <input type="email" id="authEmail" placeholder="Email" />
       <input type="password" id="authPassword" placeholder="Password" />
+      <input type="text" id="authOtp" placeholder="Enter 6-digit OTP" style="display:none;" />
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn" onclick="handleAuth('login')">LOGIN</button>
         <button class="btn ghost" onclick="handleAuth('register')">REGISTER</button>
+        <button class="btn" id="verifyOtpBtn" onclick="verifyOtp()" style="display:none;">VERIFY OTP</button>
+        <button class="btn ghost" id="resendOtpBtn" onclick="resendOtp()" style="display:none;">RESEND OTP</button>
       </div>
     </div>
     <div id="authMessage" class="empty" style="display:block; margin-top:12px;"></div>
@@ -452,7 +455,8 @@ let state = null;
 let activeCat = 'ALL';
 let authToken = localStorage.getItem('system-auth-token') || '';
 let userId = localStorage.getItem('system-user-id') || '';
-const API_BASE = '/api';
+let otpPendingEmail = '';
+const API_BASE = window.__SYSTEM_API_BASE__ || '/api';
 const CATS = ['CDS','GYM','DEV','DSA'];
 const CAT_LABEL = {CDS:'CDS / AFCAT', GYM:'GYM', DEV:'WEB DEV', DSA:'DSA'};
 const CAT_STAT = {CDS:'INT', GYM:'STR', DSA:'PER', DEV:'AGI'};
@@ -486,7 +490,12 @@ async function requestJson(path, { method='GET', body, auth=true } = {}) {
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && authToken) headers['Authorization'] = `Bearer ${authToken}`;
-  const res = await fetch(`${API_BASE}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  let baseUrl = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
+  // Fix for file:// protocol - use localhost:3001 when opening HTML directly
+  if (!baseUrl.startsWith('http')) {
+    baseUrl = 'http://localhost:3001/api';
+  }
+  const res = await fetch(`${baseUrl}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
@@ -501,12 +510,28 @@ function ensureAuthenticated(){
   return true;
 }
 
+function setOtpFlowVisible(visible){
+  const otpInput = document.getElementById('authOtp');
+  const verifyBtn = document.getElementById('verifyOtpBtn');
+  const resendBtn = document.getElementById('resendOtpBtn');
+  otpInput.style.display = visible ? 'block' : 'none';
+  verifyBtn.style.display = visible ? 'inline-block' : 'none';
+  resendBtn.style.display = visible ? 'inline-block' : 'none';
+}
+
 async function handleAuth(mode){
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
   const message = document.getElementById('authMessage');
   try {
     const payload = await requestJson(`/auth/${mode}`, { method:'POST', body:{ email, password }, auth:false });
+    if (payload.requiresVerification) {
+      otpPendingEmail = payload.email || email;
+      setOtpFlowVisible(true);
+      message.textContent = payload.message || 'Verification code sent. Enter it to continue.';
+      message.style.color = 'var(--gold)';
+      return;
+    }
     authToken = payload.token;
     userId = payload.userId;
     localStorage.setItem('system-auth-token', authToken);
@@ -516,6 +541,52 @@ async function handleAuth(mode){
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('appShell').style.display = 'block';
     await loadState();
+  } catch (err) {
+    message.textContent = err.message;
+    message.style.color = 'var(--danger-bright)';
+  }
+}
+
+async function verifyOtp(){
+  const message = document.getElementById('authMessage');
+  const otp = document.getElementById('authOtp').value.trim();
+  if (!otpPendingEmail || !/^[0-9]{6}$/.test(otp)) {
+    message.textContent = 'Enter the 6-digit verification code.';
+    message.style.color = 'var(--danger-bright)';
+    return;
+  }
+  try {
+    const payload = await requestJson('/auth/verify-otp', { method:'POST', body:{ email: otpPendingEmail, otp }, auth:false });
+    authToken = payload.token;
+    userId = payload.userId;
+    localStorage.setItem('system-auth-token', authToken);
+    localStorage.setItem('system-user-id', userId);
+    setOtpFlowVisible(false);
+    message.textContent = 'Email verified and signed in.';
+    message.style.color = 'var(--success)';
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appShell').style.display = 'block';
+    await loadState();
+  } catch (err) {
+    message.textContent = err.message;
+    message.style.color = 'var(--danger-bright)';
+  }
+}
+
+async function resendOtp(){
+  const email = document.getElementById('authEmail').value.trim();
+  const message = document.getElementById('authMessage');
+  if (!email) {
+    message.textContent = 'Enter your email first.';
+    message.style.color = 'var(--danger-bright)';
+    return;
+  }
+  try {
+    const payload = await requestJson('/auth/resend-otp', { method:'POST', body:{ email }, auth:false });
+    otpPendingEmail = payload.email || email;
+    setOtpFlowVisible(true);
+    message.textContent = payload.message || 'A new code has been sent.';
+    message.style.color = 'var(--gold)';
   } catch (err) {
     message.textContent = err.message;
     message.style.color = 'var(--danger-bright)';

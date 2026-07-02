@@ -58,7 +58,7 @@ type ApiFetchOptions = {
   auth?: boolean;
 };
 
-const API_BASE = '/api';
+const API_BASE = (typeof window !== 'undefined' && (window as any).__SYSTEM_API_BASE__) || '/api';
 const CATS: Array<Quest['cat']> = ['CDS', 'GYM', 'DEV', 'DSA'];
 const CAT_LABEL: Record<string, string> = {
   CDS: 'CDS / AFCAT',
@@ -91,7 +91,8 @@ async function apiFetch<T = any>(path: string, { method = 'GET', body, auth = tr
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (auth && storage.token) headers['Authorization'] = `Bearer ${storage.token}`;
 
-  const response = await fetch(`${API_BASE}${path}`, {
+  const baseUrl = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
+  const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -166,7 +167,10 @@ function useToast(): [ToastState, React.Dispatch<React.SetStateAction<ToastState
 function AuthView({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
+  const [otpPendingEmail, setOtpPendingEmail] = useState('');
+  const [otpVisible, setOtpVisible] = useState(false);
 
   const submit = async (mode: 'login' | 'register') => {
     if (!validateEmail(email) || typeof password !== 'string' || password.length < 6) {
@@ -175,15 +179,63 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
     }
 
     try {
-      const data = await apiFetch<{ token: string; userId: string }>(`/auth/${mode}`, {
+      const data = await apiFetch<{ token?: string; userId?: string; requiresVerification?: boolean; message?: string; email?: string }>(`/auth/${mode}`, {
         method: 'POST',
         body: { email, password },
         auth: false,
       });
-      storage.token = data.token;
-      storage.userId = data.userId;
+      if (data.requiresVerification) {
+        setOtpPendingEmail(data.email || email);
+        setOtpVisible(true);
+        setMessage(data.message || 'Verification code sent. Enter it to continue.');
+        return;
+      }
+      storage.token = data.token || '';
+      storage.userId = data.userId || '';
       setMessage(mode === 'login' ? 'Signed in.' : 'Registered and signed in.');
       onSuccess();
+    } catch (err) {
+      setMessage((err as Error).message);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otpPendingEmail || !/^\d{6}$/.test(otp)) {
+      setMessage('Enter the 6-digit verification code.');
+      return;
+    }
+
+    try {
+      const data = await apiFetch<{ token?: string; userId?: string }>(`/auth/verify-otp`, {
+        method: 'POST',
+        body: { email: otpPendingEmail, otp },
+        auth: false,
+      });
+      storage.token = data.token || '';
+      storage.userId = data.userId || '';
+      setOtpVisible(false);
+      setMessage('Email verified and signed in.');
+      onSuccess();
+    } catch (err) {
+      setMessage((err as Error).message);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (!validateEmail(email)) {
+      setMessage('Enter your email first.');
+      return;
+    }
+
+    try {
+      const data = await apiFetch<{ message?: string; email?: string }>(`/auth/resend-otp`, {
+        method: 'POST',
+        body: { email },
+        auth: false,
+      });
+      setOtpPendingEmail(data.email || email);
+      setOtpVisible(true);
+      setMessage(data.message || 'A new verification code has been sent.');
     } catch (err) {
       setMessage((err as Error).message);
     }
@@ -195,9 +247,12 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
       <div className="panel-title">AUTHENTICATION <span className="corner" /></div>
       <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
       <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+      {otpVisible ? <input type="text" placeholder="Enter 6-digit OTP" value={otp} onChange={e => setOtp(e.target.value)} /> : null}
       <div className="flex flex-wrap gap-3">
         <button className="btn" type="button" onClick={() => submit('login')}>LOGIN</button>
         <button className="btn ghost" type="button" onClick={() => submit('register')}>REGISTER</button>
+        {otpVisible ? <button className="btn" type="button" onClick={verifyOtp}>VERIFY OTP</button> : null}
+        {otpVisible ? <button className="btn ghost" type="button" onClick={resendOtp}>RESEND OTP</button> : null}
       </div>
       <div className="empty" style={{ display: 'block', marginTop: '12px' }}>{message}</div>
     </div>

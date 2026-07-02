@@ -1,13 +1,34 @@
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET || process.env.AUTH_SECRET;
   if (secret) return secret;
+
+  const secretFile = path.join(__dirname, '..', 'data', 'jwt-secret.txt');
+  try {
+    if (fs.existsSync(secretFile)) {
+      const persisted = fs.readFileSync(secretFile, 'utf8').trim();
+      if (persisted) return persisted;
+    }
+  } catch (err) {
+    // fall back to generating a new secret below
+  }
+
   if (process.env.NODE_ENV === 'production') {
     throw new Error('JWT_SECRET must be set in production');
   }
-  return crypto.randomBytes(32).toString('hex');
+
+  const newSecret = crypto.randomBytes(32).toString('hex');
+  try {
+    fs.mkdirSync(path.dirname(secretFile), { recursive: true });
+    fs.writeFileSync(secretFile, newSecret);
+  } catch (err) {
+    // ignore write failures and continue with the generated secret
+  }
+  return newSecret;
 }
 
 const JWT_SECRET = getJwtSecret();
