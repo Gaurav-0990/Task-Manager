@@ -82,7 +82,7 @@ function normalizeEmail(email) {
   return String(email).trim().toLowerCase();
 }
 
-async function createUser({ id, email, passwordHash, createdAt, verified = true, otp = null, otpExpiresAt = null }) {
+async function createUser({ id, email, passwordHash, createdAt, verified = true, otpHash = null, otpExpiresAt = null }) {
   const normalizedEmail = normalizeEmail(email);
   if (storeMode === 'mongo') {
     const db = await connectMongo();
@@ -93,22 +93,22 @@ async function createUser({ id, email, passwordHash, createdAt, verified = true,
       passwordHash,
       createdAt,
       verified,
-      otp,
+      otpHash,
       otpExpiresAt,
     };
     await db.collection('users').insertOne(payload);
-    return { id, email: normalizedEmail, createdAt, verified, otp, otpExpiresAt };
+    return { id, email: normalizedEmail, createdAt, verified, otpHash, otpExpiresAt };
   }
 
   const existingIndex = fileStore.users.findIndex(entry => entry.email.toLowerCase() === normalizedEmail);
-  const record = { id, email: normalizedEmail, passwordHash, createdAt, verified, otp, otpExpiresAt };
+  const record = { id, email: normalizedEmail, passwordHash, createdAt, verified, otpHash, otpExpiresAt };
   if (existingIndex >= 0) {
     fileStore.users[existingIndex] = record;
   } else {
     fileStore.users.push(record);
   }
   await persistFileStore();
-  return { id, email: normalizedEmail, createdAt, verified, otp, otpExpiresAt };
+  return { id, email: normalizedEmail, createdAt, verified, otpHash, otpExpiresAt };
 }
 
 async function findUserByEmail(email) {
@@ -123,7 +123,7 @@ async function findUserByEmail(email) {
       passwordHash: user.passwordHash,
       createdAt: user.createdAt,
       verified: user.verified !== false,
-      otp: user.otp || null,
+      otpHash: user.otpHash || null,
       otpExpiresAt: user.otpExpiresAt || null,
     };
   }
@@ -136,18 +136,18 @@ async function findUserByEmail(email) {
     passwordHash: user.passwordHash,
     createdAt: user.createdAt,
     verified: user.verified !== false,
-    otp: user.otp || null,
+    otpHash: user.otpHash || null,
     otpExpiresAt: user.otpExpiresAt || null,
   };
 }
 
-async function updateUserOtp(email, otp, otpExpiresAt) {
+async function updateUserOtp(email, otpHash, otpExpiresAt) {
   const normalizedEmail = normalizeEmail(email);
   if (storeMode === 'mongo') {
     const db = await connectMongo();
     await db.collection('users').updateOne(
       { email: normalizedEmail },
-      { $set: { otp, otpExpiresAt, verified: false } },
+      { $set: { otpHash, otpExpiresAt, verified: false } },
       { upsert: false }
     );
     return true;
@@ -157,7 +157,7 @@ async function updateUserOtp(email, otp, otpExpiresAt) {
   if (existingIndex >= 0) {
     fileStore.users[existingIndex] = {
       ...fileStore.users[existingIndex],
-      otp,
+      otpHash,
       otpExpiresAt,
       verified: false,
     };
@@ -172,7 +172,7 @@ async function markUserVerified(email) {
     const db = await connectMongo();
     await db.collection('users').updateOne(
       { email: normalizedEmail },
-      { $set: { verified: true, otp: null, otpExpiresAt: null } },
+      { $set: { verified: true, otpHash: null, otpExpiresAt: null } },
       { upsert: false }
     );
     return true;
@@ -183,7 +183,7 @@ async function markUserVerified(email) {
     fileStore.users[existingIndex] = {
       ...fileStore.users[existingIndex],
       verified: true,
-      otp: null,
+      otpHash: null,
       otpExpiresAt: null,
     };
     await persistFileStore();

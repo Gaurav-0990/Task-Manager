@@ -64,8 +64,13 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-initializeDb().catch(err => {
-  console.error('Failed to initialize database', err);
-}).finally(() => {
-  app.listen(PORT, () => console.log(`THE SYSTEM backend running on port ${PORT}`));
-});
+
+if (!process.env.VERCEL) {
+  initializeDb().catch(err => {
+    console.error('Failed to initialize database', err);
+  }).finally(() => {
+    app.listen(PORT, () => console.log(`THE SYSTEM backend running on port ${PORT}`));
+  });
+}
+
+module.exports = app;
